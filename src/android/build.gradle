@@ -1,0 +1,9 @@
+repositories {
+    flatDir {
+        dirs 'src/main/libs'
+    }
+}
+
+dependencies {
+    implementation(name:'ekyc-setu-sdk', ext:'aar')
+}
