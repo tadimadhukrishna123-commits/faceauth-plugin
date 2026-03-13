@@ -15,7 +15,14 @@
 
     <platform name="android">
 
-        <!-- Register Plugin -->
+        <!-- Allow detection of UIDAI FaceRD service (Android 11+) -->
+        <config-file target="AndroidManifest.xml" parent="/manifest">
+            <queries>
+                <package android:name="in.gov.uidai.facerd"/>
+            </queries>
+        </config-file>
+
+        <!-- Register Cordova plugin -->
         <config-file target="config.xml" parent="/*">
             <feature name="FaceAuthPlugin">
                 <param name="android-package"
@@ -23,12 +30,12 @@
             </feature>
         </config-file>
 
-        <!-- Java Plugin -->
+        <!-- Java plugin -->
         <source-file
             src="src/android/FaceAuthPlugin.java"
             target-dir="src/com/bank/faceauth"/>
 
-        <!-- NPCI SDK -->
+        <!-- NPCI SDK AAR -->
         <source-file
             src="src/android/libs/ekyc-setu-sdk.aar"
             target-dir="app/libs"/>
@@ -39,7 +46,7 @@
             custom="true"
             type="gradleReference"/>
 
-        <!-- Permissions -->
+        <!-- Required permissions -->
         <config-file target="AndroidManifest.xml" parent="/manifest">
 
             <uses-permission android:name="android.permission.CAMERA"/>
