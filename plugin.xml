@@ -6,9 +6,9 @@
         xmlns:android="http://schemas.android.com/apk/res/android">
 
     <name>FaceAuthPlugin</name>
-
     <description>NPCI eKYC Face Authentication Plugin</description>
 
+    <!-- JS Bridge -->
     <js-module src="www/faceauth.js" name="FaceAuthPlugin">
         <clobbers target="cordova.plugins.faceauth"/>
     </js-module>
@@ -19,10 +19,11 @@
 
     <platform name="android">
 
-        <!-- Register plugin service -->
+        <!-- Register plugin -->
         <config-file target="config.xml" parent="/*">
             <feature name="FaceAuthPlugin">
-                <param name="android-package" value="com.bank.faceauth.FaceAuthPlugin"/>
+                <param name="android-package"
+                       value="com.bank.faceauth.FaceAuthPlugin"/>
             </feature>
         </config-file>
 
@@ -31,20 +32,24 @@
             src="src/android/FaceAuthPlugin.java"
             target-dir="src/com/bank/faceauth"/>
 
-        <!-- NPCI SDK -->
+        <!-- NPCI SDK AAR -->
         <source-file
             src="src/android/libs/ekyc-setu-sdk.aar"
             target-dir="libs"/>
 
         <!-- Gradle dependency -->
-        <framework src="src/android/faceauth.gradle"
-                   custom="true"
-                   type="gradleReference"/>
+        <framework
+            src="src/android/build.gradle"
+            custom="true"
+            type="gradleReference"/>
 
         <!-- Permissions -->
         <config-file target="AndroidManifest.xml" parent="/manifest">
+
             <uses-permission android:name="android.permission.CAMERA"/>
             <uses-permission android:name="android.permission.INTERNET"/>
+            <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
         </config-file>
 
     </platform>
