@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.ResultReceiver;
-import android.provider.Settings;
 import android.util.Log;
 
 import org.apache.cordova.CallbackContext;
@@ -34,7 +33,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
         this.callbackContext = callbackContext;
 
-        // Keep callback alive for async response
+        // keep callback alive
         PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
         pluginResult.setKeepCallback(true);
         callbackContext.sendPluginResult(pluginResult);
@@ -44,28 +43,17 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
         try {
 
-            String cred = "{\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}]}";
             String keyCode = "EKYC";
             String langPref = "en_US";
-            String txnId = String.valueOf(System.currentTimeMillis());
 
-            String deviceId = Settings.Secure.getString(
-                    activity.getContentResolver(),
-                    Settings.Secure.ANDROID_ID
-            );
-
-            String payer = "user@upi";
-
-            Log.d(TAG, "txnId: " + txnId);
-            Log.d(TAG, "deviceId: " + deviceId);
-            Log.d(TAG, "saltJson: " + saltJson);
+            String cred = "{\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}]}";
 
             CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
 
                 @Override
                 public void serviceConnected(CLServices services) {
 
-                    Log.d(TAG, "NPCI service connected");
+                    Log.d(TAG, "NPCI SDK connected");
 
                     CLRemoteResultReceiver receiver =
                             new CLRemoteResultReceiver(new ResultReceiver(new Handler()) {
@@ -73,25 +61,15 @@ public class FaceAuthPlugin extends CordovaPlugin {
                                 @Override
                                 protected void onReceiveResult(int resultCode, Bundle resultData) {
 
-                                    Log.d(TAG, "NPCI Result Bundle: " + resultData);
+                                    Log.d(TAG, "Result code: " + resultCode);
+                                    Log.d(TAG, "Result bundle: " + resultData);
 
                                     if (resultData == null) {
-                                        callbackContext.error("Empty FaceAuth result");
+                                        callbackContext.error("Empty response from SDK");
                                         return;
                                     }
 
                                     try {
-
-                                        Log.d(TAG, "Bundle keys: " + resultData.keySet());
-
-                                        if (resultData.containsKey("errorCode")) {
-
-                                            String errorCode = String.valueOf(resultData.get("errorCode"));
-                                            String errorMsg = String.valueOf(resultData.get("error"));
-
-                                            callbackContext.error("FaceAuth Error: " + errorCode + " - " + errorMsg);
-                                            return;
-                                        }
 
                                         String result;
 
@@ -101,20 +79,9 @@ public class FaceAuthPlugin extends CordovaPlugin {
                                         else if (resultData.containsKey("PID_DATA_XML")) {
                                             result = resultData.getString("PID_DATA_XML");
                                         }
-                                        else if (resultData.containsKey("pidData")) {
-                                            result = resultData.getString("pidData");
-                                        }
-                                        else if (resultData.containsKey("response")) {
-                                            result = resultData.getString("response");
-                                        }
-                                        else if (resultData.containsKey("RESULT")) {
-                                            result = resultData.getString("RESULT");
-                                        }
                                         else {
                                             result = resultData.toString();
                                         }
-
-                                        Log.d(TAG, "FaceAuth Success Result: " + result);
 
                                         callbackContext.success(result);
 
@@ -134,12 +101,12 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
                         services.getCredential(
                                 keyCode,
-                                txnId,
+                                "",
                                 cred,
-                                payer,
+                                "",
                                 saltJson,
-                                deviceId,
-                                "ANDROID",
+                                "",
+                                "",
                                 langPref,
                                 receiver
                         );
@@ -158,7 +125,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
                 public void serviceDisconnected() {
 
                     Log.e(TAG, "NPCI service disconnected");
-                    callbackContext.error("NPCI service disconnected");
+                    callbackContext.error("SDK disconnected");
 
                 }
 
@@ -167,7 +134,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
         }
         catch (Exception e) {
 
-            Log.e(TAG, "Plugin exception: " + e.getMessage());
+            Log.e(TAG, "Plugin error: " + e.getMessage());
             callbackContext.error(e.getMessage());
 
         }
@@ -175,4 +142,3 @@ public class FaceAuthPlugin extends CordovaPlugin {
         return true;
     }
 }
-
