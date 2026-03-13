@@ -1,4 +1,3 @@
-```java
 package com.bank.faceauth;
 
 import android.app.Activity;
