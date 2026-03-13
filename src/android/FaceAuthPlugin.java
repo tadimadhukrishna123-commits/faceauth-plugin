@@ -1,3 +1,4 @@
+```java
 package com.bank.faceauth;
 
 import android.app.Activity;
@@ -34,13 +35,12 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
         this.callbackContext = callbackContext;
 
-        // Keep callback alive
+        // Keep callback alive for async response
         PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
         pluginResult.setKeepCallback(true);
         callbackContext.sendPluginResult(pluginResult);
 
         Activity activity = cordova.getActivity();
-
         String saltJson = args.getString(0);
 
         try {
@@ -59,7 +59,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
             Log.d(TAG, "txnId: " + txnId);
             Log.d(TAG, "deviceId: " + deviceId);
-            Log.d(TAG, "salt: " + saltJson);
+            Log.d(TAG, "saltJson: " + saltJson);
 
             CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
 
@@ -74,7 +74,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
                                 @Override
                                 protected void onReceiveResult(int resultCode, Bundle resultData) {
 
-                                    Log.d(TAG, "Result received: " + resultData);
+                                    Log.d(TAG, "NPCI Result Bundle: " + resultData);
 
                                     if (resultData == null) {
                                         callbackContext.error("Empty FaceAuth result");
@@ -82,6 +82,8 @@ public class FaceAuthPlugin extends CordovaPlugin {
                                     }
 
                                     try {
+
+                                        Log.d(TAG, "Bundle keys: " + resultData.keySet());
 
                                         if (resultData.containsKey("errorCode")) {
 
@@ -100,6 +102,12 @@ public class FaceAuthPlugin extends CordovaPlugin {
                                         else if (resultData.containsKey("PID_DATA_XML")) {
                                             result = resultData.getString("PID_DATA_XML");
                                         }
+                                        else if (resultData.containsKey("pidData")) {
+                                            result = resultData.getString("pidData");
+                                        }
+                                        else if (resultData.containsKey("response")) {
+                                            result = resultData.getString("response");
+                                        }
                                         else if (resultData.containsKey("RESULT")) {
                                             result = resultData.getString("RESULT");
                                         }
@@ -107,12 +115,14 @@ public class FaceAuthPlugin extends CordovaPlugin {
                                             result = resultData.toString();
                                         }
 
+                                        Log.d(TAG, "FaceAuth Success Result: " + result);
+
                                         callbackContext.success(result);
 
                                     }
                                     catch (Exception e) {
 
-                                        Log.e(TAG, "Parsing error: " + e.getMessage());
+                                        Log.e(TAG, "Result parsing error: " + e.getMessage());
                                         callbackContext.error(e.getMessage());
 
                                     }
@@ -166,3 +176,4 @@ public class FaceAuthPlugin extends CordovaPlugin {
         return true;
     }
 }
+```
