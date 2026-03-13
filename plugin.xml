@@ -30,17 +30,19 @@
         <source-file
             src="src/android/FaceAuthPlugin.java"
             target-dir="src/com/bank/faceauth"/>
-            
-        <source-file
-        src="src/android/libs/ekyc-setu-sdk.aar"
-        target-dir="src/main/libs"/>
 
+        <!-- NPCI SDK -->
+        <source-file
+            src="src/android/libs/ekyc-setu-sdk.aar"
+            target-dir="libs"/>
 
         <!-- Gradle dependency -->
-        <framework src="src/android/build.gradle" custom="true" type="gradleReference"/>
+        <framework src="src/android/faceauth.gradle"
+                   custom="true"
+                   type="gradleReference"/>
 
         <!-- Permissions -->
-        <config-file target="AndroidManifest.xml" parent="/*">
+        <config-file target="AndroidManifest.xml" parent="/manifest">
             <uses-permission android:name="android.permission.CAMERA"/>
             <uses-permission android:name="android.permission.INTERNET"/>
         </config-file>
