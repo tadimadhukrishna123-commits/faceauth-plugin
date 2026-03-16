@@ -8,48 +8,44 @@
     <name>FaceAuthPlugin</name>
     <description>NPCI eKYC Face Authentication Plugin</description>
 
-    <!-- JS Bridge -->
     <js-module src="www/faceauth.js" name="FaceAuthPlugin">
         <clobbers target="cordova.plugins.faceauth"/>
     </js-module>
 
     <platform name="android">
 
-        <!-- Android 11+ package visibility -->
+        <!-- Android 11+ visibility -->
         <config-file target="AndroidManifest.xml" parent="/manifest">
             <queries>
+
                 <package android:name="in.gov.uidai.facerd"/>
 
                 <intent>
                     <action android:name="in.gov.uidai.rdservice.face.CAPTURE"/>
                 </intent>
+
             </queries>
         </config-file>
 
-        <!-- Register plugin -->
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="FaceAuthPlugin">
                 <param name="android-package" value="com.bank.faceauth.FaceAuthPlugin"/>
             </feature>
         </config-file>
 
-        <!-- Java plugin -->
         <source-file
             src="src/android/FaceAuthPlugin.java"
             target-dir="src/com/bank/faceauth"/>
 
-        <!-- SDK AAR -->
         <source-file
             src="src/android/libs/ekyc-setu-sdk.aar"
             target-dir="libs"/>
 
-        <!-- Gradle -->
         <framework
             src="src/android/faceauth.gradle"
             custom="true"
             type="gradleReference"/>
 
-        <!-- Permissions -->
         <config-file target="AndroidManifest.xml" parent="/manifest">
 
             <uses-permission android:name="android.permission.CAMERA"/>
