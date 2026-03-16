@@ -49,7 +49,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
             // ✅ FIXED HERE (added env)
           String cred = "{"
         + "\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}],"
-        + "\"env\":\"P\""
+        + "\"env\":\"S\""
         + "}";
 
             CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
