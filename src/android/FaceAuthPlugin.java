@@ -47,7 +47,10 @@ public class FaceAuthPlugin extends CordovaPlugin {
             String langPref = "en_US";
 
             // ✅ FIXED HERE (added env)
-           String cred = "{\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}]}";
+          String cred = "{"
+        + "\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}],"
+        + "\"env\":\"P\""
+        + "}";
 
             CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
 
