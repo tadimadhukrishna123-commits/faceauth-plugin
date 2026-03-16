@@ -46,7 +46,10 @@ public class FaceAuthPlugin extends CordovaPlugin {
             String keyCode = "EKYC";
             String langPref = "en_US";
 
-            String cred = "{\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}]}";
+            String cred = "{"
+                            + "\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}],"
+                            + "\"env\":\"S\""
+                            + "}";
 
             CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
 
