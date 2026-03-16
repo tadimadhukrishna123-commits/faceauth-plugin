@@ -1,147 +1,66 @@
 package com.bank.faceauth;
 
 import android.app.Activity;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.ResultReceiver;
-import android.util.Log;
+import android.content.Intent;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
-import org.apache.cordova.PluginResult;
-
 import org.json.JSONArray;
-import org.json.JSONException;
-
-import org.npci.upi.security.services.CLServices;
-import org.npci.upi.security.services.CLRemoteResultReceiver;
-import org.npci.upi.security.services.ServiceConnectionStatusNotifier;
 
 public class FaceAuthPlugin extends CordovaPlugin {
 
-    private static final String TAG = "FaceAuthPlugin";
+    private static final int FACE_AUTH_REQUEST = 1001;
     private CallbackContext callbackContext;
 
     @Override
-    public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
+    public boolean execute(String action, JSONArray args, CallbackContext callbackContext) {
 
-        if (!action.equals("faceAuth")) {
-            return false;
+        if (action.equals("captureFace")) {
+
+            this.callbackContext = callbackContext;
+
+            try {
+
+                String pidOptions =
+                        "<PidOptions ver=\"1.0\">" +
+                        "<Opts env=\"S\" fCount=\"1\" fType=\"2\" iCount=\"0\" iType=\"0\" pCount=\"0\" format=\"0\" pidVer=\"2.0\" timeout=\"10000\"/>" +
+                        "</PidOptions>";
+
+                Intent intent = new Intent("in.gov.uidai.rdservice.face.CAPTURE");
+                intent.putExtra("PID_OPTIONS", pidOptions);
+
+                cordova.startActivityForResult(this, intent, FACE_AUTH_REQUEST);
+
+            } catch (Exception e) {
+                callbackContext.error(e.getMessage());
+            }
+
+            return true;
         }
 
-        Log.d(TAG, "FaceAuth request received");
+        return false;
+    }
 
-        this.callbackContext = callbackContext;
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
 
-        // keep callback alive
-        PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
-        pluginResult.setKeepCallback(true);
-        callbackContext.sendPluginResult(pluginResult);
+        if (requestCode == FACE_AUTH_REQUEST) {
 
-        Activity activity = cordova.getActivity();
-        String saltJson = args.getString(0);
+            if (resultCode == Activity.RESULT_OK) {
 
-        try {
+                String pidData = data.getStringExtra("PID_DATA");
 
-            String keyCode = "EKYC";
-            String langPref = "en_US";
-
-            String cred = "{"
-                            + "\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}],"
-                            + "\"env\":\"S\""
-                            + "}";
-
-            CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
-
-                @Override
-                public void serviceConnected(CLServices services) {
-
-                    Log.d(TAG, "NPCI SDK connected");
-
-                    CLRemoteResultReceiver receiver =
-                            new CLRemoteResultReceiver(new ResultReceiver(new Handler()) {
-
-                                @Override
-                                protected void onReceiveResult(int resultCode, Bundle resultData) {
-
-                                    Log.d(TAG, "Result code: " + resultCode);
-                                    Log.d(TAG, "Result bundle: " + resultData);
-
-                                    if (resultData == null) {
-                                        callbackContext.error("Empty response from SDK");
-                                        return;
-                                    }
-
-                                    try {
-
-                                        String result;
-
-                                        if (resultData.containsKey("PID_DATA")) {
-                                            result = resultData.getString("PID_DATA");
-                                        }
-                                        else if (resultData.containsKey("PID_DATA_XML")) {
-                                            result = resultData.getString("PID_DATA_XML");
-                                        }
-                                        else {
-                                            result = resultData.toString();
-                                        }
-
-                                        callbackContext.success(result);
-
-                                    }
-                                    catch (Exception e) {
-
-                                        Log.e(TAG, "Result parsing error: " + e.getMessage());
-                                        callbackContext.error(e.getMessage());
-
-                                    }
-
-                                }
-
-                            });
-
-                    try {
-
-                        services.getCredential(
-                                keyCode,
-                                "",
-                                cred,
-                                "",
-                                saltJson,
-                                "",
-                                "",
-                                langPref,
-                                receiver
-                        );
-
-                    }
-                    catch (Exception e) {
-
-                        Log.e(TAG, "getCredential error: " + e.getMessage());
-                        callbackContext.error(e.getMessage());
-
-                    }
-
+                if (callbackContext != null) {
+                    callbackContext.success(pidData);
                 }
 
-                @Override
-                public void serviceDisconnected() {
+            } else {
 
-                    Log.e(TAG, "NPCI service disconnected");
-                    callbackContext.error("SDK disconnected");
-
+                if (callbackContext != null) {
+                    callbackContext.error("Face capture cancelled");
                 }
 
-            });
-
+            }
         }
-        catch (Exception e) {
-
-            Log.e(TAG, "Plugin error: " + e.getMessage());
-            callbackContext.error(e.getMessage());
-
-        }
-
-        return true;
     }
 }
