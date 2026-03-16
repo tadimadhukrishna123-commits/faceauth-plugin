@@ -1,121 +1,151 @@
 package com.bank.faceauth;
 
 import android.app.Activity;
-import android.content.Intent;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.ResultReceiver;
 import android.util.Log;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
+import org.apache.cordova.PluginResult;
+
 import org.json.JSONArray;
+import org.json.JSONException;
+
+import org.npci.upi.security.services.CLServices;
+import org.npci.upi.security.services.CLRemoteResultReceiver;
+import org.npci.upi.security.services.ServiceConnectionStatusNotifier;
 
 public class FaceAuthPlugin extends CordovaPlugin {
 
     private static final String TAG = "FaceAuthPlugin";
-    private static final int FACE_AUTH_REQUEST = 1001;
-
     private CallbackContext callbackContext;
 
     @Override
-    public boolean execute(String action, JSONArray args, CallbackContext callbackContext) {
+    public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
 
-        if ("faceAuth".equals(action)) {
-
-            this.callbackContext = callbackContext;
-
-            try {
-
-                String salt = args.getString(0);
-                Log.d(TAG, "Salt received: " + salt);
-
-                startFaceCapture(salt);
-
-            } catch (Exception e) {
-
-                Log.e(TAG, "Error starting face authentication", e);
-                callbackContext.error("Error: " + e.getMessage());
-            }
-
-            return true;
+        if (!action.equals("faceAuth")) {
+            return false;
         }
 
-        return false;
-    }
+        Log.d(TAG, "FaceAuth request received");
 
-    private void startFaceCapture(String salt) {
+        this.callbackContext = callbackContext;
+
+        // keep callback alive
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
+        pluginResult.setKeepCallback(true);
+        callbackContext.sendPluginResult(pluginResult);
+
+        Activity activity = cordova.getActivity();
+
+        // Salt JSON coming from JS
+        String saltJson = args.getString(0);
 
         try {
 
-            String pidOptions =
-                    "<PidOptions ver=\"1.0\">" +
-                    "<Opts env=\"P\" fCount=\"1\" fType=\"2\" iCount=\"0\" iType=\"0\" pCount=\"0\" format=\"0\" pidVer=\"2.0\" timeout=\"10000\" otp=\"\" wadh=\"\" posh=\"UNKNOWN\"/>" +
-                    "</PidOptions>";
+            String keyCode = "EKYC";
+            String langPref = "en_US";
 
-            Log.d(TAG, "PID_OPTIONS: " + pidOptions);
+            String cred = "{\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}]}";
 
-            Intent intent = new Intent("in.gov.uidai.rdservice.face.CAPTURE");
+            CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
 
-            intent.putExtra("PID_OPTIONS", pidOptions);
-            intent.putExtra("salt", salt);
+                @Override
+                public void serviceConnected(CLServices services) {
 
-            cordova.startActivityForResult(this, intent, FACE_AUTH_REQUEST);
+                    Log.d(TAG, "NPCI SDK connected");
 
-        } catch (Exception e) {
+                    CLRemoteResultReceiver receiver =
+                            new CLRemoteResultReceiver(new ResultReceiver(new Handler()) {
 
-            Log.e(TAG, "Error launching FaceRD", e);
+                                @Override
+                                protected void onReceiveResult(int resultCode, Bundle resultData) {
 
-            if (callbackContext != null) {
-                callbackContext.error("Unable to start Face Authentication: " + e.getMessage());
-            }
-        }
-    }
+                                    Log.d(TAG, "ResultCode: " + resultCode);
+                                    Log.d(TAG, "ResultBundle: " + resultData);
 
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+                                    if (resultData == null) {
+                                        callbackContext.error("Empty response from FaceRD");
+                                        return;
+                                    }
 
-        if (requestCode == FACE_AUTH_REQUEST) {
+                                    try {
 
-            try {
+                                        String result;
 
-                if (data != null) {
+                                        if (resultData.containsKey("PID_DATA")) {
+                                            result = resultData.getString("PID_DATA");
+                                        }
+                                        else if (resultData.containsKey("PID_DATA_XML")) {
+                                            result = resultData.getString("PID_DATA_XML");
+                                        }
+                                        else if (resultData.containsKey("encryptedPid")) {
+                                            result = resultData.getString("encryptedPid");
+                                        }
+                                        else {
+                                            result = resultData.toString();
+                                        }
 
-                    String pidData = data.getStringExtra("PID_DATA");
-                    String errCode = data.getStringExtra("ERR");
-                    String errInfo = data.getStringExtra("ERR_INFO");
+                                        Log.d(TAG, "FaceAuth Success: " + result);
 
-                    Log.d(TAG, "PID_DATA: " + pidData);
-                    Log.d(TAG, "ERR_CODE: " + errCode);
-                    Log.d(TAG, "ERR_INFO: " + errInfo);
+                                        callbackContext.success(result);
 
-                    if (pidData != null && !pidData.isEmpty()) {
+                                    }
+                                    catch (Exception e) {
 
-                        if (callbackContext != null) {
-                            callbackContext.success(pidData);
-                        }
+                                        Log.e(TAG, "Result parsing error: " + e.getMessage());
+                                        callbackContext.error(e.getMessage());
 
-                        return;
+                                    }
+
+                                }
+
+                            });
+
+                    try {
+
+                        services.getCredential(
+                                keyCode,
+                                "",
+                                cred,
+                                "",
+                                saltJson,
+                                "",
+                                "",
+                                langPref,
+                                receiver
+                        );
+
+                    }
+                    catch (Exception e) {
+
+                        Log.e(TAG, "getCredential error: " + e.getMessage());
+                        callbackContext.error(e.getMessage());
+
                     }
 
-                    String errorMessage = "RD Error: " + errCode + " - " + errInfo;
-
-                    if (callbackContext != null) {
-                        callbackContext.error(errorMessage);
-                    }
-
-                    return;
                 }
 
-                if (callbackContext != null) {
-                    callbackContext.error("No response from FaceRD service");
+                @Override
+                public void serviceDisconnected() {
+
+                    Log.e(TAG, "NPCI service disconnected");
+                    callbackContext.error("NPCI service disconnected");
+
                 }
 
-            } catch (Exception e) {
+            });
 
-                Log.e(TAG, "Result processing error", e);
-
-                if (callbackContext != null) {
-                    callbackContext.error("Result error: " + e.getMessage());
-                }
-            }
         }
+        catch (Exception e) {
+
+            Log.e(TAG, "Plugin exception: " + e.getMessage());
+            callbackContext.error(e.getMessage());
+
+        }
+
+        return true;
     }
 }
