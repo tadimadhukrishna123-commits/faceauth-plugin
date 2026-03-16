@@ -5,5 +5,5 @@ repositories {
 }
 
 dependencies {
-    implementation(name:'ekyc-setu-sdk', ext:'aar')
+    implementation(name: 'ekyc-setu-sdk', ext: 'aar')
 }
