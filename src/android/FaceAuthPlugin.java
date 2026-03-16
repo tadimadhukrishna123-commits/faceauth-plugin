@@ -33,14 +33,12 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
         this.callbackContext = callbackContext;
 
-        // keep callback alive
         PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
         pluginResult.setKeepCallback(true);
         callbackContext.sendPluginResult(pluginResult);
 
         Activity activity = cordova.getActivity();
 
-        // Salt JSON coming from JS
         String saltJson = args.getString(0);
 
         try {
@@ -48,7 +46,11 @@ public class FaceAuthPlugin extends CordovaPlugin {
             String keyCode = "EKYC";
             String langPref = "en_US";
 
-            String cred = "{\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}]}";
+            // ✅ FIXED HERE (added env)
+            String cred = "{"
+                    + "\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}],"
+                    + "\"env\":\"PP\""
+                    + "}";
 
             CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
 
