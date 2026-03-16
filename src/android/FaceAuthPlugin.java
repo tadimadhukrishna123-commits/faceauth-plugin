@@ -15,11 +15,13 @@ public class FaceAuthPlugin extends CordovaPlugin {
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) {
 
-        if (action.equals("captureFace")) {
+        if (action.equals("faceAuth")) {
 
             this.callbackContext = callbackContext;
 
             try {
+
+                String salt = args.getString(0);
 
                 String pidOptions =
                         "<PidOptions ver=\"1.0\">" +
@@ -27,12 +29,16 @@ public class FaceAuthPlugin extends CordovaPlugin {
                         "</PidOptions>";
 
                 Intent intent = new Intent("in.gov.uidai.rdservice.face.CAPTURE");
+
                 intent.putExtra("PID_OPTIONS", pidOptions);
+                intent.putExtra("salt", salt);
 
                 cordova.startActivityForResult(this, intent, FACE_AUTH_REQUEST);
 
             } catch (Exception e) {
+
                 callbackContext.error(e.getMessage());
+
             }
 
             return true;
@@ -57,7 +63,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
             } else {
 
                 if (callbackContext != null) {
-                    callbackContext.error("Face capture cancelled");
+                    callbackContext.error("Face Authentication Cancelled");
                 }
 
             }
