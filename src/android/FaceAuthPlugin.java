@@ -31,8 +31,8 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
             } catch (Exception e) {
 
-                Log.e(TAG, "Error starting FaceAuth", e);
-                callbackContext.error(e.getMessage());
+                Log.e(TAG, "Error starting face authentication", e);
+                callbackContext.error("Error: " + e.getMessage());
             }
 
             return true;
@@ -50,6 +50,8 @@ public class FaceAuthPlugin extends CordovaPlugin {
                     "<Opts env=\"P\" fCount=\"1\" fType=\"2\" iCount=\"0\" iType=\"0\" pCount=\"0\" format=\"0\" pidVer=\"2.0\" timeout=\"10000\" otp=\"\" wadh=\"\" posh=\"UNKNOWN\"/>" +
                     "</PidOptions>";
 
+            Log.d(TAG, "PID_OPTIONS: " + pidOptions);
+
             Intent intent = new Intent("in.gov.uidai.rdservice.face.CAPTURE");
 
             intent.putExtra("PID_OPTIONS", pidOptions);
@@ -59,10 +61,10 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
         } catch (Exception e) {
 
-            Log.e(TAG, "Face capture start error", e);
+            Log.e(TAG, "Error launching FaceRD", e);
 
             if (callbackContext != null) {
-                callbackContext.error("Unable to start face capture: " + e.getMessage());
+                callbackContext.error("Unable to start Face Authentication: " + e.getMessage());
             }
         }
     }
@@ -77,10 +79,14 @@ public class FaceAuthPlugin extends CordovaPlugin {
                 if (data != null) {
 
                     String pidData = data.getStringExtra("PID_DATA");
+                    String errCode = data.getStringExtra("ERR");
+                    String errInfo = data.getStringExtra("ERR_INFO");
+
+                    Log.d(TAG, "PID_DATA: " + pidData);
+                    Log.d(TAG, "ERR_CODE: " + errCode);
+                    Log.d(TAG, "ERR_INFO: " + errInfo);
 
                     if (pidData != null && !pidData.isEmpty()) {
-
-                        Log.d(TAG, "PID_DATA received");
 
                         if (callbackContext != null) {
                             callbackContext.success(pidData);
@@ -88,20 +94,26 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
                         return;
                     }
+
+                    String errorMessage = "RD Error: " + errCode + " - " + errInfo;
+
+                    if (callbackContext != null) {
+                        callbackContext.error(errorMessage);
+                    }
+
+                    return;
                 }
 
-                Log.e(TAG, "Face authentication failed or cancelled");
-
                 if (callbackContext != null) {
-                    callbackContext.error("Face Authentication Failed or Cancelled");
+                    callbackContext.error("No response from FaceRD service");
                 }
 
             } catch (Exception e) {
 
-                Log.e(TAG, "Error reading result", e);
+                Log.e(TAG, "Result processing error", e);
 
                 if (callbackContext != null) {
-                    callbackContext.error(e.getMessage());
+                    callbackContext.error("Result error: " + e.getMessage());
                 }
             }
         }
