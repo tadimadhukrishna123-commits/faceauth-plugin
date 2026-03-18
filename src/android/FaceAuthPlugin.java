@@ -27,7 +27,6 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
             startEkycFlow(activity, saltJson);
 
-            // Keep callback alive
             PluginResult result = new PluginResult(PluginResult.Status.NO_RESULT);
             result.setKeepCallback(true);
             callbackContext.sendPluginResult(result);
@@ -40,8 +39,14 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
     private void startEkycFlow(Activity activity, String saltJson) {
 
-        // 🔥 Correct cred
+        // 🔥 Aadhaar + FaceAuth flow
         String cred = "{\"CredAllowed\":[{\"type\":\"AADHAAR\",\"subtype\":\"FACE_AUTH\"}]}";
+
+        // 🔥 IMPORTANT CONFIG (this enables Aadhaar screen)
+        String configuration = "{"
+                + "\"aadhaarConsent\":\"Y\","
+                + "\"mode\":\"SELF\""
+                + "}";
 
         CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
 
@@ -57,18 +62,16 @@ public class FaceAuthPlugin extends CordovaPlugin {
                                 try {
 
                                     Log.d("EKYC_DEBUG", "ResultCode: " + resultCode);
+                                    Log.d("EKYC_DEBUG", "Bundle: " + resultData);
 
                                     if (resultData == null) {
                                         callbackContext.error("Empty resultData");
                                         return;
                                     }
 
-                                    // 🔥 IMPORTANT: get full bundle response
+                                    // 🔥 Return FULL response (no parsing issues)
                                     String fullResponse = resultData.toString();
 
-                                    Log.d("EKYC_DEBUG", "FULL RESPONSE: " + fullResponse);
-
-                                    // Send complete response to OutSystems
                                     callbackContext.success(fullResponse);
 
                                 } catch (Exception e) {
@@ -77,16 +80,15 @@ public class FaceAuthPlugin extends CordovaPlugin {
                             }
                         });
 
-                // 🔥 SDK CALL
                 services.getCredential(
-                        "EKYC",
-                        "",
-                        cred,
-                        "",
-                        saltJson,
-                        "",
-                        "",
-                        "en_US",
+                        "EKYC",        // keyCode
+                        "",            // listKeyPayload
+                        cred,          // Aadhaar + FaceAuth
+                        configuration,// 🔥 FIX (IMPORTANT)
+                        saltJson,      // salt from JS
+                        "",            // payInfo
+                        "",            // trust
+                        "en_US",       // language
                         receiver
                 );
             }
