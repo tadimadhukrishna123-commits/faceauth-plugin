@@ -19,131 +19,112 @@ import org.npci.upi.security.services.ServiceConnectionStatusNotifier;
 
 public class FaceAuthPlugin extends CordovaPlugin {
 
-    private static final String TAG = "FaceAuthPlugin";
     private CallbackContext callbackContext;
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
 
-        if (!action.equals("faceAuth")) {
-            return false;
-        }
-
-        Log.d(TAG, "FaceAuth request received");
+        if (!action.equals("faceAuth")) return false;
 
         this.callbackContext = callbackContext;
 
-        PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
-        pluginResult.setKeepCallback(true);
-        callbackContext.sendPluginResult(pluginResult);
+        PluginResult result = new PluginResult(PluginResult.Status.NO_RESULT);
+        result.setKeepCallback(true);
+        callbackContext.sendPluginResult(result);
 
         Activity activity = cordova.getActivity();
-
         String saltJson = args.getString(0);
 
-        try {
+        String keyCode = "EKYC";
+        String langPref = "en_US";
 
-            String keyCode = "EKYC";
-            String langPref = "en_US";
+        // ✅ FaceAuth credential
+        String cred = "{"
+                + "\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}]"
+                + "}";
 
-            // ✅ FIXED HERE (added env)
-          String cred = "{\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}]}";
+        // ✅ IMPORTANT: Enable Aadhaar step
+        String configuration = "{"
+                + "\"aadhaarConsent\":\"Y\","
+                + "\"mode\":\"SELF\""
+                + "}";
 
-            CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
+        CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
 
-                @Override
-                public void serviceConnected(CLServices services) {
+            @Override
+            public void serviceConnected(CLServices services) {
 
-                    Log.d(TAG, "NPCI SDK connected");
+                CLRemoteResultReceiver receiver =
+                        new CLRemoteResultReceiver(new ResultReceiver(new Handler()) {
 
-                    CLRemoteResultReceiver receiver =
-                            new CLRemoteResultReceiver(new ResultReceiver(new Handler()) {
+                            @Override
+                            protected void onReceiveResult(int resultCode, Bundle resultData) {
 
-                                @Override
-                                protected void onReceiveResult(int resultCode, Bundle resultData) {
-
-                                    Log.d(TAG, "ResultCode: " + resultCode);
-                                    Log.d(TAG, "ResultBundle: " + resultData);
-
-                                    if (resultData == null) {
-                                        callbackContext.error("Empty response from FaceRD");
-                                        return;
-                                    }
-
-                                    try {
-
-                                        String result;
-
-                                        if (resultData.containsKey("PID_DATA")) {
-                                            result = resultData.getString("PID_DATA");
-                                        }
-                                        else if (resultData.containsKey("PID_DATA_XML")) {
-                                            result = resultData.getString("PID_DATA_XML");
-                                        }
-                                        else if (resultData.containsKey("encryptedPid")) {
-                                            result = resultData.getString("encryptedPid");
-                                        }
-                                        else {
-                                            result = resultData.toString();
-                                        }
-
-                                        Log.d(TAG, "FaceAuth Success: " + result);
-
-                                        callbackContext.success(result);
-
-                                    }
-                                    catch (Exception e) {
-
-                                        Log.e(TAG, "Result parsing error: " + e.getMessage());
-                                        callbackContext.error(e.getMessage());
-
-                                    }
-
+                                if (resultData == null) {
+                                    callbackContext.error("Empty response");
+                                    return;
                                 }
 
-                            });
+                                try {
 
-                    try {
+                                    String pid = "";
+                                    String aadhaar = "";
 
-                        services.getCredential(
-                                keyCode,
-                                "",
-                                cred,
-                                "",
-                                saltJson,
-                                "",
-                                "",
-                                langPref,
-                                receiver
-                        );
+                                    // ✅ PID
+                                    if (resultData.containsKey("PID_DATA")) {
+                                        pid = resultData.getString("PID_DATA");
+                                    }
 
-                    }
-                    catch (Exception e) {
+                                    // ✅ Encrypted Aadhaar
+                                    if (resultData.containsKey("AADHAAR_DATA")) {
+                                        aadhaar = resultData.getString("AADHAAR_DATA");
+                                    }
 
-                        Log.e(TAG, "getCredential error: " + e.getMessage());
-                        callbackContext.error(e.getMessage());
+                                    // fallback
+                                    if (aadhaar == null || aadhaar.isEmpty()) {
+                                        if (resultData.containsKey("encryptedAadhaar")) {
+                                            aadhaar = resultData.getString("encryptedAadhaar");
+                                        }
+                                    }
 
-                    }
+                                    // combine response
+                                    String finalResult = "{"
+                                            + "\"pidData\":" + "\"" + pid + "\","
+                                            + "\"encryptedAadhaar\":" + "\"" + aadhaar + "\""
+                                            + "}";
 
+                                    callbackContext.success(finalResult);
+
+                                } catch (Exception e) {
+                                    callbackContext.error(e.getMessage());
+                                }
+                            }
+                        });
+
+                try {
+
+                    services.getCredential(
+                            keyCode,
+                            "",                 // listKeyPayload
+                            cred,
+                            configuration,      // ✅ IMPORTANT
+                            saltJson,
+                            "",                 // payInfo
+                            "",                 // trust
+                            langPref,
+                            receiver
+                    );
+
+                } catch (Exception e) {
+                    callbackContext.error(e.getMessage());
                 }
+            }
 
-                @Override
-                public void serviceDisconnected() {
-
-                    Log.e(TAG, "NPCI service disconnected");
-                    callbackContext.error("NPCI service disconnected");
-
-                }
-
-            });
-
-        }
-        catch (Exception e) {
-
-            Log.e(TAG, "Plugin exception: " + e.getMessage());
-            callbackContext.error(e.getMessage());
-
-        }
+            @Override
+            public void serviceDisconnected() {
+                callbackContext.error("Service disconnected");
+            }
+        });
 
         return true;
     }
