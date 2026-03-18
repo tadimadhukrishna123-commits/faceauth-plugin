@@ -13,19 +13,20 @@ import org.npci.upi.security.services.*;
 public class FaceAuthPlugin extends CordovaPlugin {
 
     private CallbackContext callbackContext;
-    private String encryptedAadhaar = "";
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) {
 
         this.callbackContext = callbackContext;
-        Activity activity = cordova.getActivity();
-        String saltJson = args.optString(0);
 
         if (action.equals("startEkyc")) {
 
-            startAadhaarFlow(activity, saltJson);
+            Activity activity = cordova.getActivity();
+            String saltJson = args.optString(0);
 
+            startEkycFlow(activity, saltJson);
+
+            // Keep callback alive (important)
             PluginResult result = new PluginResult(PluginResult.Status.NO_RESULT);
             result.setKeepCallback(true);
             callbackContext.sendPluginResult(result);
@@ -36,9 +37,10 @@ public class FaceAuthPlugin extends CordovaPlugin {
         return false;
     }
 
-    private void startAadhaarFlow(Activity activity, String saltJson) {
+    private void startEkycFlow(Activity activity, String saltJson) {
 
-        String cred = "{\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"AADHAR_NUMBER_AUTH\"}]}";
+        // 🔥 Correct cred config (VERY IMPORTANT)
+        String cred = "{\"CredAllowed\":[{\"type\":\"AADHAAR\",\"subtype\":\"FACE_AUTH\"}]}";
 
         CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
 
@@ -51,17 +53,43 @@ public class FaceAuthPlugin extends CordovaPlugin {
                             @Override
                             protected void onReceiveResult(int resultCode, Bundle resultData) {
 
-                                if (resultCode == 2) { // Aadhaar success
+                                try {
 
-                                    encryptedAadhaar = resultData.getString("AADHAAR_DATA");
+                                    // 🔍 Debug logs (optional)
+                                    // Log.d("EKYC", "ResultCode: " + resultCode);
 
-                                    // 🔥 Now call FaceAuth
-                                    startFaceAuth(services, saltJson);
+                                    String encryptedAadhaar = resultData.getString("AADHAAR_DATA");
+                                    String pidData = resultData.getString("PID_DATA");
+
+                                    if (encryptedAadhaar == null) encryptedAadhaar = "";
+                                    if (pidData == null) pidData = "";
+
+                                    // Final response
+                                    String finalResult = "{"
+                                            + "\"encryptedAadhaar\":\"" + encryptedAadhaar + "\","
+                                            + "\"pidData\":\"" + pidData + "\""
+                                            + "}";
+
+                                    callbackContext.success(finalResult);
+
+                                } catch (Exception e) {
+                                    callbackContext.error("Error: " + e.getMessage());
                                 }
                             }
                         });
 
-                services.getCredential("EKYC", "", cred, "", saltJson, "", "", "en_US", receiver);
+                // 🔥 Main SDK call
+                services.getCredential(
+                        "EKYC",        // keyCode
+                        "",            // listKeyPayload
+                        cred,          // credAllowed
+                        "",            // configuration
+                        saltJson,      // salt (from JS)
+                        "",            // payInfo
+                        "",            // trust
+                        "en_US",       // language
+                        receiver
+                );
             }
 
             @Override
@@ -69,34 +97,5 @@ public class FaceAuthPlugin extends CordovaPlugin {
                 callbackContext.error("Service disconnected");
             }
         });
-    }
-
-    private void startFaceAuth(CLServices services, String saltJson) {
-
-        String cred = "{\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}]}";
-
-        CLRemoteResultReceiver receiver =
-                new CLRemoteResultReceiver(new ResultReceiver(new Handler()) {
-
-                    @Override
-                    protected void onReceiveResult(int resultCode, Bundle resultData) {
-
-                        try {
-                            String pid = resultData.getString("PID_DATA");
-
-                            String finalResult = "{"
-                                    + "\"encryptedAadhaar\":\"" + encryptedAadhaar + "\","
-                                    + "\"pidData\":\"" + pid + "\""
-                                    + "}";
-
-                            callbackContext.success(finalResult);
-
-                        } catch (Exception e) {
-                            callbackContext.error(e.getMessage());
-                        }
-                    }
-                });
-
-        services.getCredential("EKYC", "", cred, "", saltJson, "", "", "en_US", receiver);
     }
 }
