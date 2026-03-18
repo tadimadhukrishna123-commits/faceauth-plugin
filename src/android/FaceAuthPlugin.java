@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.ResultReceiver;
+import android.util.Log;
 
 import org.apache.cordova.*;
 import org.json.JSONArray;
@@ -26,7 +27,6 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
             startEkycFlow(activity, saltJson);
 
-            // Keep callback alive (important)
             PluginResult result = new PluginResult(PluginResult.Status.NO_RESULT);
             result.setKeepCallback(true);
             callbackContext.sendPluginResult(result);
@@ -39,7 +39,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
     private void startEkycFlow(Activity activity, String saltJson) {
 
-        // 🔥 Correct cred config (VERY IMPORTANT)
+        // ✅ Correct config
         String cred = "{\"CredAllowed\":[{\"type\":\"AADHAAR\",\"subtype\":\"FACE_AUTH\"}]}";
 
         CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
@@ -55,16 +55,34 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
                                 try {
 
-                                    // 🔍 Debug logs (optional)
-                                    // Log.d("EKYC", "ResultCode: " + resultCode);
+                                    Log.d("EKYC_DEBUG", "ResultCode: " + resultCode);
+                                    Log.d("EKYC_DEBUG", "Bundle: " + resultData);
 
-                                    String encryptedAadhaar = resultData.getString("AADHAAR_DATA");
-                                    String pidData = resultData.getString("PID_DATA");
+                                    String encryptedAadhaar = "";
+                                    String pidData = "";
 
-                                    if (encryptedAadhaar == null) encryptedAadhaar = "";
-                                    if (pidData == null) pidData = "";
+                                    if (resultData != null) {
 
-                                    // Final response
+                                        // Aadhaar
+                                        if (resultData.containsKey("AADHAAR_DATA")) {
+                                            encryptedAadhaar = resultData.getString("AADHAAR_DATA");
+                                        }
+                                        else if (resultData.containsKey("encryptedAadhaar")) {
+                                            encryptedAadhaar = resultData.getString("encryptedAadhaar");
+                                        }
+
+                                        // PID
+                                        if (resultData.containsKey("PID_DATA")) {
+                                            pidData = resultData.getString("PID_DATA");
+                                        }
+                                        else if (resultData.containsKey("PID_DATA_XML")) {
+                                            pidData = resultData.getString("PID_DATA_XML");
+                                        }
+                                        else if (resultData.containsKey("encryptedPid")) {
+                                            pidData = resultData.getString("encryptedPid");
+                                        }
+                                    }
+
                                     String finalResult = "{"
                                             + "\"encryptedAadhaar\":\"" + encryptedAadhaar + "\","
                                             + "\"pidData\":\"" + pidData + "\""
@@ -78,16 +96,15 @@ public class FaceAuthPlugin extends CordovaPlugin {
                             }
                         });
 
-                // 🔥 Main SDK call
                 services.getCredential(
-                        "EKYC",        // keyCode
-                        "",            // listKeyPayload
-                        cred,          // credAllowed
-                        "",            // configuration
-                        saltJson,      // salt (from JS)
-                        "",            // payInfo
-                        "",            // trust
-                        "en_US",       // language
+                        "EKYC",
+                        "",
+                        cred,
+                        "",
+                        saltJson,
+                        "",
+                        "",
+                        "en_US",
                         receiver
                 );
             }
