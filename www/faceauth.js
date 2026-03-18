@@ -1,6 +1,24 @@
 var exec = require('cordova/exec');
 
+/**
+ * OLD (optional) - FaceAuth only
+ */
 exports.faceAuth = function (salt, success, error) {
+
+    exec(
+        success || function(res){ console.log("FaceAuth success:", res); },
+        error || function(err){ console.error("FaceAuth error:", err); },
+        "FaceAuthPlugin",
+        "faceAuth",
+        [salt]
+    );
+};
+
+
+/**
+ * ✅ NEW - FULL eKYC (Aadhaar + FaceAuth)
+ */
+exports.startEkyc = function (salt, success, error) {
 
     if (!salt) {
         console.error("Salt is required");
@@ -8,25 +26,11 @@ exports.faceAuth = function (salt, success, error) {
         return;
     }
 
-    if (!success) {
-        success = function (res) {
-            console.log("FaceAuth success:", res);
-        };
-    }
-
-    if (!error) {
-        error = function (err) {
-            console.error("FaceAuth error:", err);
-        };
-    }
-
-    console.log("Calling FaceAuthPlugin with salt:", salt);
-
     exec(
-        success,
-        error,
+        success || function(res){ console.log("eKYC success:", res); },
+        error || function(err){ console.error("eKYC error:", err); },
         "FaceAuthPlugin",
-        "faceAuth",
+        "startEkyc",   // 👈 IMPORTANT (new action)
         [salt]
     );
 };
