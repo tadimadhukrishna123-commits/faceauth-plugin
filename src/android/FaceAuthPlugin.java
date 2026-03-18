@@ -27,6 +27,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
             startEkycFlow(activity, saltJson);
 
+            // Keep callback alive
             PluginResult result = new PluginResult(PluginResult.Status.NO_RESULT);
             result.setKeepCallback(true);
             callbackContext.sendPluginResult(result);
@@ -39,7 +40,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
     private void startEkycFlow(Activity activity, String saltJson) {
 
-        // ✅ Correct config
+        // 🔥 Correct cred
         String cred = "{\"CredAllowed\":[{\"type\":\"AADHAAR\",\"subtype\":\"FACE_AUTH\"}]}";
 
         CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
@@ -56,39 +57,19 @@ public class FaceAuthPlugin extends CordovaPlugin {
                                 try {
 
                                     Log.d("EKYC_DEBUG", "ResultCode: " + resultCode);
-                                    Log.d("EKYC_DEBUG", "Bundle: " + resultData);
 
-                                    String encryptedAadhaar = "";
-                                    String pidData = "";
-
-                                    if (resultData != null) {
-
-                                        // Aadhaar
-                                        if (resultData.containsKey("AADHAAR_DATA")) {
-                                            encryptedAadhaar = resultData.getString("AADHAAR_DATA");
-                                        }
-                                        else if (resultData.containsKey("encryptedAadhaar")) {
-                                            encryptedAadhaar = resultData.getString("encryptedAadhaar");
-                                        }
-
-                                        // PID
-                                        if (resultData.containsKey("PID_DATA")) {
-                                            pidData = resultData.getString("PID_DATA");
-                                        }
-                                        else if (resultData.containsKey("PID_DATA_XML")) {
-                                            pidData = resultData.getString("PID_DATA_XML");
-                                        }
-                                        else if (resultData.containsKey("encryptedPid")) {
-                                            pidData = resultData.getString("encryptedPid");
-                                        }
+                                    if (resultData == null) {
+                                        callbackContext.error("Empty resultData");
+                                        return;
                                     }
 
-                                    String finalResult = "{"
-                                            + "\"encryptedAadhaar\":\"" + encryptedAadhaar + "\","
-                                            + "\"pidData\":\"" + pidData + "\""
-                                            + "}";
+                                    // 🔥 IMPORTANT: get full bundle response
+                                    String fullResponse = resultData.toString();
 
-                                    callbackContext.success(finalResult);
+                                    Log.d("EKYC_DEBUG", "FULL RESPONSE: " + fullResponse);
+
+                                    // Send complete response to OutSystems
+                                    callbackContext.success(fullResponse);
 
                                 } catch (Exception e) {
                                     callbackContext.error("Error: " + e.getMessage());
@@ -96,6 +77,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
                             }
                         });
 
+                // 🔥 SDK CALL
                 services.getCredential(
                         "EKYC",
                         "",
