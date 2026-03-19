@@ -30,10 +30,9 @@ exports.faceAuth = function (mobileNumber, success, error) {
     exec(success, error, "FaceAuthPlugin", "faceAuth", [cred, salt]);
 };
 
-// Salt builder
 function buildSalt(type, mobileNumber) {
     return JSON.stringify({
-        appId: "com.sbi.upi.test",
+        appId: "com.bank.app",
         credType: [type],
         deviceId: "",
         mobileNumber: mobileNumber,
