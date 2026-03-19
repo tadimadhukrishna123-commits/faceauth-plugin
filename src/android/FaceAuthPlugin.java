@@ -4,14 +4,21 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.ResultReceiver;
 import android.provider.Settings;
+import android.util.Log;
 
-import org.apache.cordova.*;
+import org.apache.cordova.CallbackContext;
+import org.apache.cordova.CordovaPlugin;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import org.npci.upi.security.services.*;
+import org.npci.upi.security.services.CLRemoteResultReceiver;
+import org.npci.upi.security.services.CLServices;
+import org.npci.upi.security.services.Constant;
+import org.npci.upi.security.services.ServiceConnectionStatusNotifier;
 
 public class FaceAuthPlugin extends CordovaPlugin {
+
+    private static final String TAG = "FaceAuthPlugin";
 
     private CallbackContext callbackContext;
 
@@ -21,32 +28,35 @@ public class FaceAuthPlugin extends CordovaPlugin {
         this.callbackContext = callbackContext;
 
         try {
+            Log.d(TAG, "Action: " + action);
+
             String cred = args.getString(0);
             String salt = args.getString(1);
 
-            // Add deviceId dynamically
+            // Inject deviceId
             salt = enrichSalt(salt);
 
-            // Initialize SDK
+            // Init SDK
             initSDK();
 
-            if (action.equals("startAadhaar")) {
+            if ("startAadhaar".equals(action)) {
                 startAadhaar(cred, salt);
                 return true;
             } 
-            else if (action.equals("faceAuth")) {
+            else if ("faceAuth".equals(action)) {
                 faceAuth(cred, salt);
                 return true;
             }
 
         } catch (Exception e) {
-            callbackContext.error("ERROR: " + e.getMessage());
+            Log.e(TAG, "Execute Error", e);
+            callbackContext.error("EXECUTE ERROR: " + e.getMessage());
         }
 
         return false;
     }
 
-    // 🔹 Inject deviceId into salt
+    // 🔹 Add deviceId dynamically
     private String enrichSalt(String salt) throws Exception {
 
         JSONObject json = new JSONObject(salt);
@@ -58,6 +68,8 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
         json.put("deviceId", deviceId);
 
+        Log.d(TAG, "Salt with deviceId: " + json.toString());
+
         return json.toString();
     }
 
@@ -65,15 +77,20 @@ public class FaceAuthPlugin extends CordovaPlugin {
     private void initSDK() {
 
         if (Constant.clServices == null) {
+
+            Log.d(TAG, "Initializing SDK...");
+
             CLServices.initService(cordova.getActivity(), new ServiceConnectionStatusNotifier() {
 
                 @Override
                 public void serviceConnected(CLServices services) {
                     Constant.clServices = services;
+                    Log.d(TAG, "SDK Connected");
                 }
 
                 @Override
                 public void serviceDisconnected() {
+                    Log.d(TAG, "SDK Disconnected");
                 }
             });
         }
@@ -83,20 +100,22 @@ public class FaceAuthPlugin extends CordovaPlugin {
     private void startAadhaar(String cred, String salt) {
 
         try {
+            Log.d(TAG, "Calling Aadhaar SDK...");
 
             Constant.clServices.getCredential(
-                    "EKYC",              // keyCode
-                    "",                  // xmlPayload
-                    cred,                // controls (Aadhaar)
-                    "",                  // config
-                    salt,                // salt
-                    "",                  // trust
-                    "",                  // payInfo
-                    "en_US",             // language
+                    "EKYC",     // keyCode
+                    "",         // xmlPayload
+                    cred,       // controls (AADHAR)
+                    "",         // config
+                    salt,       // salt
+                    "",         // trust
+                    "",         // payInfo
+                    "en_US",    // language
                     getReceiver("AADHAAR")
             );
 
         } catch (Exception e) {
+            Log.e(TAG, "Aadhaar Error", e);
             callbackContext.error("AADHAAR ERROR: " + e.getMessage());
         }
     }
@@ -105,11 +124,12 @@ public class FaceAuthPlugin extends CordovaPlugin {
     private void faceAuth(String cred, String salt) {
 
         try {
+            Log.d(TAG, "Calling FaceAuth SDK...");
 
             Constant.clServices.getCredential(
                     "EKYC",
                     "",
-                    cred,                // controls (FaceAuth)
+                    cred,       // controls (FACE_AUTH)
                     "",
                     salt,
                     "",
@@ -119,12 +139,13 @@ public class FaceAuthPlugin extends CordovaPlugin {
             );
 
         } catch (Exception e) {
+            Log.e(TAG, "FaceAuth Error", e);
             callbackContext.error("FACE ERROR: " + e.getMessage());
         }
     }
 
-    // 🔹 Result Handler
-    private CLRemoteResultReceiver getReceiver(String type) {
+    // 🔹 Handle SDK response
+    private CLRemoteResultReceiver getReceiver(final String type) {
 
         return new CLRemoteResultReceiver(new ResultReceiver(new Handler()) {
 
@@ -133,28 +154,33 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
                 try {
 
+                    Log.d(TAG, "ResultCode: " + resultCode);
+
                     String result = "";
 
                     if (resultData != null) {
                         result = resultData.toString();
                     }
 
-                    // Aadhaar success
-                    if (type.equals("AADHAAR") && resultCode == 2) {
+                    Log.d(TAG, "ResultData: " + result);
+
+                    // Aadhaar Success
+                    if ("AADHAAR".equals(type) && resultCode == 2) {
                         callbackContext.success("AADHAAR_SUCCESS:" + result);
                     }
 
-                    // Face success
-                    else if (type.equals("FACE") && resultCode == 1) {
+                    // Face Success
+                    else if ("FACE".equals(type) && resultCode == 1) {
                         callbackContext.success("FACE_SUCCESS:" + result);
                     }
 
-                    // Failure
+                    // Error
                     else {
-                        callbackContext.error("FAILED CODE: " + resultCode);
+                        callbackContext.error("FAILED CODE: " + resultCode + " DATA: " + result);
                     }
 
                 } catch (Exception e) {
+                    Log.e(TAG, "Receiver Error", e);
                     callbackContext.error("RECEIVER ERROR: " + e.getMessage());
                 }
             }
