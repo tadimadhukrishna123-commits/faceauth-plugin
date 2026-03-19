@@ -1,37 +1,64 @@
-package com.bank.ekyc;
+package com.bank.faceauth;
 
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.ResultReceiver;
-import android.util.Base64;
+import android.provider.Settings;
 
 import org.apache.cordova.*;
 import org.json.JSONArray;
-
-import java.security.SecureRandom;
+import org.json.JSONObject;
 
 import org.npci.upi.security.services.*;
 
-public class EkycPlugin extends CordovaPlugin {
+public class FaceAuthPlugin extends CordovaPlugin {
 
     private CallbackContext callbackContext;
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) {
+
         this.callbackContext = callbackContext;
 
-        if (action.equals("captureAadhaar")) {
-            captureAadhaar();
-            return true;
-        } else if (action.equals("captureFaceAuth")) {
-            captureFaceAuth();
-            return true;
+        try {
+            String cred = args.getString(0);
+            String salt = args.getString(1);
+
+            salt = enrichSalt(salt);
+
+            initSDK();
+
+            if (action.equals("startAadhaar")) {
+                startAadhaar(cred, salt);
+                return true;
+            }
+            else if (action.equals("faceAuth")) {
+                faceAuth(cred, salt);
+                return true;
+            }
+
+        } catch (Exception e) {
+            callbackContext.error(e.getMessage());
         }
 
         return false;
     }
 
-    // 🔹 INIT SDK
+    // Inject deviceId
+    private String enrichSalt(String salt) throws Exception {
+
+        JSONObject json = new JSONObject(salt);
+
+        String deviceId = Settings.Secure.getString(
+                cordova.getActivity().getContentResolver(),
+                Settings.Secure.ANDROID_ID
+        );
+
+        json.put("deviceId", deviceId);
+
+        return json.toString();
+    }
+
     private void initSDK() {
         if (Constant.clServices == null) {
             CLServices.initService(cordova.getActivity(), new ServiceConnectionStatusNotifier() {
@@ -46,104 +73,40 @@ public class EkycPlugin extends CordovaPlugin {
         }
     }
 
-    // 🔹 RANDOM GENERATOR
-    private String getRandom() throws Exception {
-        SecureRandom random = new SecureRandom();
-        byte[] bytes = new byte[16];
-        random.nextBytes(bytes);
-        return Base64.encodeToString(bytes, Base64.NO_WRAP);
+    private void startAadhaar(String cred, String salt) {
+
+        Constant.clServices.getCredential(
+                "EKYC", "", cred, "", salt, "", "", "en_US",
+                getReceiver("AADHAAR")
+        );
     }
 
-    // 🔹 COMMON RECEIVER
+    private void faceAuth(String cred, String salt) {
+
+        Constant.clServices.getCredential(
+                "EKYC", "", cred, "", salt, "", "", "en_US",
+                getReceiver("FACE")
+        );
+    }
+
     private CLRemoteResultReceiver getReceiver(String type) {
+
         return new CLRemoteResultReceiver(new ResultReceiver(new Handler()) {
             @Override
             protected void onReceiveResult(int resultCode, Bundle resultData) {
-                try {
-                    String result = resultData != null ? resultData.toString() : "";
 
-                    if (type.equals("AADHAAR") && resultCode == 2) {
-                        callbackContext.success("AADHAAR_SUCCESS:" + result);
-                    } else if (type.equals("FACE") && resultCode == 1) {
-                        callbackContext.success("FACE_SUCCESS:" + result);
-                    } else {
-                        callbackContext.error("FAILED: " + resultCode);
-                    }
+                String result = resultData != null ? resultData.toString() : "";
 
-                } catch (Exception e) {
-                    callbackContext.error(e.getMessage());
+                if (type.equals("AADHAAR") && resultCode == 2) {
+                    callbackContext.success(result);
+                }
+                else if (type.equals("FACE") && resultCode == 1) {
+                    callbackContext.success(result);
+                }
+                else {
+                    callbackContext.error("FAILED: " + resultCode);
                 }
             }
         });
-    }
-
-    // 🔹 AADHAAR METHOD
-    private void captureAadhaar() {
-        try {
-            initSDK();
-
-            String random = getRandom();
-
-            String cred = "{\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"AADHAR_NUMBER_AUTH\"}]}";
-
-            String salt = "{"
-                    + "\"appId\":\"com.bank.app\","
-                    + "\"credType\":[\"aadharNumberAuth\"],"
-                    + "\"deviceId\":\"1234567890\","
-                    + "\"mobileNumber\":\"919999999999\","
-                    + "\"txnId\":[\"TXN123456\"],"
-                    + "\"random\":\"" + random + "\""
-                    + "}";
-
-            Constant.clServices.getCredential(
-                    "EKYC",
-                    "",
-                    cred,
-                    "",
-                    salt,
-                    "",
-                    "",
-                    "en_US",
-                    getReceiver("AADHAAR")
-            );
-
-        } catch (Exception e) {
-            callbackContext.error(e.getMessage());
-        }
-    }
-
-    // 🔹 FACE AUTH METHOD
-    private void captureFaceAuth() {
-        try {
-            initSDK();
-
-            String random = getRandom();
-
-            String cred = "{\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}]}";
-
-            String salt = "{"
-                    + "\"appId\":\"com.bank.app\","
-                    + "\"credType\":[\"faceAuth\"],"
-                    + "\"deviceId\":\"1234567890\","
-                    + "\"mobileNumber\":\"919999999999\","
-                    + "\"txnId\":[\"TXN123456\"],"
-                    + "\"random\":\"" + random + "\""
-                    + "}";
-
-            Constant.clServices.getCredential(
-                    "EKYC",
-                    "",
-                    cred,
-                    "",
-                    salt,
-                    "",
-                    "",
-                    "en_US",
-                    getReceiver("FACE")
-            );
-
-        } catch (Exception e) {
-            callbackContext.error(e.getMessage());
-        }
     }
 }
