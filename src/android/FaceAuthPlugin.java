@@ -20,12 +20,12 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
         this.callbackContext = callbackContext;
 
-        if (action.equals("startEkyc")) {
+        if (action.equals("startAadhaar")) {
 
             Activity activity = cordova.getActivity();
             String saltJson = args.optString(0);
 
-            startEkycFlow(activity, saltJson);
+            startAadhaarFlow(activity, saltJson);
 
             PluginResult result = new PluginResult(PluginResult.Status.NO_RESULT);
             result.setKeepCallback(true);
@@ -37,12 +37,12 @@ public class FaceAuthPlugin extends CordovaPlugin {
         return false;
     }
 
-    private void startEkycFlow(Activity activity, String saltJson) {
+    private void startAadhaarFlow(Activity activity, String saltJson) {
 
-        // 🔥 Aadhaar + FaceAuth flow
-        String cred = "{\"CredAllowed\":[{\"type\":\"AADHAAR\",\"subtype\":\"FACE_AUTH\"}]}";
+        // 🔥 ONLY AADHAAR (no face)
+        String cred = "{\"CredAllowed\":[{\"type\":\"AADHAAR\",\"subtype\":\"AADHAAR\"}]}";
 
-        // 🔥 IMPORTANT CONFIG (this enables Aadhaar screen)
+        // 🔥 Aadhaar config
         String configuration = "{"
                 + "\"aadhaarConsent\":\"Y\","
                 + "\"mode\":\"SELF\""
@@ -61,15 +61,15 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
                                 try {
 
-                                    Log.d("EKYC_DEBUG", "ResultCode: " + resultCode);
-                                    Log.d("EKYC_DEBUG", "Bundle: " + resultData);
+                                    Log.d("AADHAAR_DEBUG", "ResultCode: " + resultCode);
+                                    Log.d("AADHAAR_DEBUG", "Bundle: " + resultData);
 
                                     if (resultData == null) {
                                         callbackContext.error("Empty resultData");
                                         return;
                                     }
 
-                                    // 🔥 Return FULL response (no parsing issues)
+                                    // Return full response
                                     String fullResponse = resultData.toString();
 
                                     callbackContext.success(fullResponse);
@@ -81,14 +81,14 @@ public class FaceAuthPlugin extends CordovaPlugin {
                         });
 
                 services.getCredential(
-                        "EKYC",        // keyCode
-                        "",            // listKeyPayload
-                        cred,          // Aadhaar + FaceAuth
-                        configuration,// 🔥 FIX (IMPORTANT)
-                        saltJson,      // salt from JS
-                        "",            // payInfo
-                        "",            // trust
-                        "en_US",       // language
+                        "EKYC",
+                        "",
+                        cred,           // 🔥 Aadhaar only
+                        configuration,  // 🔥 must
+                        saltJson,
+                        "",
+                        "",
+                        "en_US",
                         receiver
                 );
             }
