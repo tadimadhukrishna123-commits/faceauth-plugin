@@ -25,13 +25,12 @@ public class FaceAuthPlugin extends CordovaPlugin {
             String salt = args.getString(1);
 
             salt = enrichSalt(salt);
-
             initSDK();
 
             if (action.equals("startAadhaar")) {
                 startAadhaar(cred, salt);
                 return true;
-            }
+            } 
             else if (action.equals("faceAuth")) {
                 faceAuth(cred, salt);
                 return true;
@@ -44,7 +43,6 @@ public class FaceAuthPlugin extends CordovaPlugin {
         return false;
     }
 
-    // Inject deviceId
     private String enrichSalt(String salt) throws Exception {
 
         JSONObject json = new JSONObject(salt);
@@ -66,7 +64,6 @@ public class FaceAuthPlugin extends CordovaPlugin {
                 public void serviceConnected(CLServices services) {
                     Constant.clServices = services;
                 }
-
                 @Override
                 public void serviceDisconnected() {}
             });
@@ -74,7 +71,6 @@ public class FaceAuthPlugin extends CordovaPlugin {
     }
 
     private void startAadhaar(String cred, String salt) {
-
         Constant.clServices.getCredential(
                 "EKYC", "", cred, "", salt, "", "", "en_US",
                 getReceiver("AADHAAR")
@@ -82,7 +78,6 @@ public class FaceAuthPlugin extends CordovaPlugin {
     }
 
     private void faceAuth(String cred, String salt) {
-
         Constant.clServices.getCredential(
                 "EKYC", "", cred, "", salt, "", "", "en_US",
                 getReceiver("FACE")
@@ -98,13 +93,13 @@ public class FaceAuthPlugin extends CordovaPlugin {
                 String result = resultData != null ? resultData.toString() : "";
 
                 if (type.equals("AADHAAR") && resultCode == 2) {
-                    callbackContext.success(result);
-                }
+                    callbackContext.success("AADHAAR_SUCCESS:" + result);
+                } 
                 else if (type.equals("FACE") && resultCode == 1) {
-                    callbackContext.success(result);
-                }
+                    callbackContext.success("FACE_SUCCESS:" + result);
+                } 
                 else {
-                    callbackContext.error("FAILED: " + resultCode);
+                    callbackContext.error("FAILED:" + resultCode);
                 }
             }
         });
