@@ -15,7 +15,6 @@ exports.startAadhaar = function (mobileNumber, success, error) {
     exec(success, error, "FaceAuthPlugin", "startAadhaar", [cred, salt]);
 };
 
-
 // FaceAuth
 exports.faceAuth = function (mobileNumber, success, error) {
 
@@ -31,20 +30,18 @@ exports.faceAuth = function (mobileNumber, success, error) {
     exec(success, error, "FaceAuthPlugin", "faceAuth", [cred, salt]);
 };
 
-
 // Salt builder
 function buildSalt(type, mobileNumber) {
     return JSON.stringify({
-        appId: "com.bank.app",
+        appId: "com.sbi.upi.test",
         credType: [type],
-        deviceId: "", // Java lo fill avthundi
+        deviceId: "",
         mobileNumber: mobileNumber,
         txnId: ["TXN123456"],
         random: generateRandom()
     });
 }
 
-// Random
 function generateRandom() {
     return Math.random().toString(36).substring(2, 18);
 }
