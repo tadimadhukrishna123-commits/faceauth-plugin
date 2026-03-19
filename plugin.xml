@@ -1,37 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugin id="com.bank.ekyc.faceauth" version="1.0.0"
-	xmlns="http://apache.org/cordova/ns/plugins/1.0"
-	xmlns:android="http://schemas.android.com/apk/res/android">
-	<name>FaceAuthPlugin</name>
-	<description>NPCI eKYC Face Authentication Plugin</description>
-	<!-- JS Bridge -->
-	<js-module src="www/faceauth.js" name="FaceAuthPlugin">
-		<clobbers target="cordova.plugins.faceauth"/>
-	</js-module>
-	<platform name="android">
-		<!-- Allow detection of UIDAI FaceRD service (Android 11+) -->
-		<config-file target="AndroidManifest.xml" parent="/manifest">
-			<queries>
-				<package android:name="in.gov.uidai.facerd"/>
-			</queries>
-		</config-file>
-		<!-- Register Cordova plugin -->
-		<config-file target="config.xml" parent="/*">
-			<feature name="FaceAuthPlugin">
-				<param name="android-package" value="com.bank.faceauth.FaceAuthPlugin"/>
-			</feature>
-		</config-file>
-		<!-- Java plugin -->
-		<source-file src="src/android/FaceAuthPlugin.java" target-dir="src/com/bank/faceauth"/>
-		<!-- NPCI SDK AAR -->
-		<source-file src="src/android/libs/ekyc-setu-sdk.aar" target-dir="app/libs"/>
-		<!-- Gradle dependency -->
-		<framework src="src/android/faceauth.gradle" custom="true" type="gradleReference"/>
-		<!-- Required permissions -->
-		<config-file target="AndroidManifest.xml" parent="/manifest">
-			<uses-permission android:name="android.permission.CAMERA"/>
-			<uses-permission android:name="android.permission.INTERNET"/>
-			<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-		</config-file>
-	</platform>
+    xmlns="http://apache.org/cordova/ns/plugins/1.0"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <name>FaceAuthPlugin</name>
+    <description>NPCI eKYC Face Authentication Plugin</description>
+
+    <!-- JS Bridge -->
+    <js-module src="www/faceauth.js" name="FaceAuthPlugin">
+        <clobbers target="FaceAuthPlugin"/>
+    </js-module>
+
+    <platform name="android">
+
+        <!-- Plugin registration -->
+        <config-file target="config.xml" parent="/*">
+            <feature name="FaceAuthPlugin">
+                <param name="android-package" value="com.bank.faceauth.FaceAuthPlugin"/>
+            </feature>
+        </config-file>
+
+        <!-- Android 11+ FaceRD detection -->
+        <config-file target="AndroidManifest.xml" parent="/manifest">
+            <queries>
+                <package android:name="in.gov.uidai.facerd"/>
+            </queries>
+        </config-file>
+
+        <!-- Permissions -->
+        <config-file target="AndroidManifest.xml" parent="/manifest">
+            <uses-permission android:name="android.permission.CAMERA"/>
+            <uses-permission android:name="android.permission.INTERNET"/>
+            <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+        </config-file>
+
+        <!-- Java file -->
+        <source-file src="src/android/FaceAuthPlugin.java"
+                     target-dir="src/com/bank/faceauth"/>
+
+        <!-- ✅ CORRECT WAY TO ADD AAR -->
+        <framework src="src/android/libs/ekyc-setu-sdk.aar"
+                   custom="true"
+                   type="gradleReference"/>
+
+    </platform>
+
 </plugin>
