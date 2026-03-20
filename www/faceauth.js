@@ -1,7 +1,6 @@
 var exec = require('cordova/exec');
 
-// Aadhaar
-exports.startAadhaar = function (mobileNumber, success, error) {
+exports.startAadhaar = function (mobile, success, error) {
 
     var cred = JSON.stringify({
         CredAllowed: [{
@@ -10,13 +9,19 @@ exports.startAadhaar = function (mobileNumber, success, error) {
         }]
     });
 
-    var salt = buildSalt("aadharNumberAuth", mobileNumber);
+    var salt = JSON.stringify({
+        appId: "com.bank.app",
+        credType: ["aadharNumberAuth"],
+        deviceId: "",
+        mobileNumber: mobile,
+        txnId: ["TXN123456"],
+        random: Math.random().toString(36).substring(2)
+    });
 
     exec(success, error, "FaceAuthPlugin", "startAadhaar", [cred, salt]);
 };
 
-// FaceAuth
-exports.faceAuth = function (mobileNumber, success, error) {
+exports.faceAuth = function (mobile, success, error) {
 
     var cred = JSON.stringify({
         CredAllowed: [{
@@ -25,22 +30,14 @@ exports.faceAuth = function (mobileNumber, success, error) {
         }]
     });
 
-    var salt = buildSalt("faceAuth", mobileNumber);
+    var salt = JSON.stringify({
+        appId: "com.bank.app",
+        credType: ["faceAuth"],
+        deviceId: "",
+        mobileNumber: mobile,
+        txnId: ["TXN123456"],
+        random: Math.random().toString(36).substring(2)
+    });
 
     exec(success, error, "FaceAuthPlugin", "faceAuth", [cred, salt]);
 };
-
-function buildSalt(type, mobileNumber) {
-    return JSON.stringify({
-        appId: "com.bank.app",
-        credType: [type],
-        deviceId: "",
-        mobileNumber: mobileNumber,
-        txnId: ["TXN123456"],
-        random: generateRandom()
-    });
-}
-
-function generateRandom() {
-    return Math.random().toString(36).substring(2, 18);
-}
