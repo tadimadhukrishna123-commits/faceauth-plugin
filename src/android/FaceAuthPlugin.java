@@ -4,7 +4,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.ResultReceiver;
 import android.provider.Settings;
-import android.util.Log;
 
 import org.apache.cordova.*;
 import org.json.JSONArray;
@@ -15,7 +14,6 @@ import org.npci.upi.security.services.*;
 public class FaceAuthPlugin extends CordovaPlugin {
 
     private CallbackContext callbackContext;
-    private static final String TAG = "FaceAuthPlugin";
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) {
@@ -32,8 +30,9 @@ public class FaceAuthPlugin extends CordovaPlugin {
             if ("startAadhaar".equals(action)) {
                 startAadhaar(cred, salt);
                 return true;
-            } 
-            else if ("faceAuth".equals(action)) {
+            }
+
+            if ("faceAuth".equals(action)) {
                 faceAuth(cred, salt);
                 return true;
             }
