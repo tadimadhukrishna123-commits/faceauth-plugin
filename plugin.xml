@@ -13,14 +13,14 @@
 
     <platform name="android">
 
-        <!-- Register plugin -->
+        <!-- Register Plugin -->
         <config-file target="config.xml" parent="/*">
             <feature name="FaceAuthPlugin">
                 <param name="android-package" value="com.bank.faceauth.FaceAuthPlugin"/>
             </feature>
         </config-file>
 
-        <!-- Allow FaceRD detection (Android 11+) -->
+        <!-- FaceRD detection -->
         <config-file target="AndroidManifest.xml" parent="/manifest">
             <queries>
                 <package android:name="in.gov.uidai.facerd"/>
@@ -34,15 +34,11 @@
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
         </config-file>
 
-        <!-- Java Plugin -->
+        <!-- Java -->
         <source-file src="src/android/FaceAuthPlugin.java"
                      target-dir="src/com/bank/faceauth"/>
 
-        <!-- ✅ Copy AAR into build -->
-        <resource-file src="src/android/libs/ekyc-setu-sdk.aar"
-                       target="app/libs/ekyc-setu-sdk.aar"/>
-
-        <!-- ✅ Load AAR using Gradle -->
+        <!-- Gradle (AAR load) -->
         <framework src="src/android/faceauth.gradle"
                    custom="true"
                    type="gradleReference"/>
