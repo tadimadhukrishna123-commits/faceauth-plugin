@@ -1,169 +1,116 @@
 package com.bank.faceauth;
 
+import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.ResultReceiver;
-import android.provider.Settings;
+import android.util.Log;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
-import org.json.JSONArray;
-import org.json.JSONObject;
+import org.apache.cordova.PluginResult;
 
-import org.npci.upi.security.services.CLRemoteResultReceiver;
+import org.json.JSONArray;
+import org.json.JSONException;
+
 import org.npci.upi.security.services.CLServices;
-import org.npci.upi.security.services.Constant;
+import org.npci.upi.security.services.CLRemoteResultReceiver;
 import org.npci.upi.security.services.ServiceConnectionStatusNotifier;
 
 public class FaceAuthPlugin extends CordovaPlugin {
 
+    private static final String TAG = "FaceAuthPlugin";
     private CallbackContext callbackContext;
 
     @Override
-    public boolean execute(String action, JSONArray args, CallbackContext callbackContext) {
+    public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
+
+        if (!action.equals("faceAuth")) {
+            return false;
+        }
 
         this.callbackContext = callbackContext;
 
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
+        pluginResult.setKeepCallback(true);
+        callbackContext.sendPluginResult(pluginResult);
+
+        Activity activity = cordova.getActivity();
+        String saltJson = args.getString(0);
+
         try {
-            String cred = args.getString(0);
-            String salt = args.getString(1);
 
-            // Add deviceId
-            salt = enrichSalt(salt);
+            String keyCode = "EKYC";
+            String langPref = "en_US";
 
-            // Initialize SDK
-            initSDK();
+            // ✅ FACE AUTH ONLY (OLD WORKING)
+            String cred = "{\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}]}";
 
-            if ("startAadhaar".equals(action)) {
-                startAadhaar(cred, salt);
-                return true;
-            }
-
-            if ("faceAuth".equals(action)) {
-                faceAuth(cred, salt);
-                return true;
-            }
-
-        } catch (Exception e) {
-            callbackContext.error("EXECUTE ERROR: " + e.getMessage());
-        }
-
-        return false;
-    }
-
-    // 🔹 Add deviceId into salt
-    private String enrichSalt(String salt) throws Exception {
-
-        JSONObject json = new JSONObject(salt);
-
-        String deviceId = Settings.Secure.getString(
-                cordova.getActivity().getContentResolver(),
-                Settings.Secure.ANDROID_ID
-        );
-
-        json.put("deviceId", deviceId);
-
-        return json.toString();
-    }
-
-    // 🔹 Initialize SDK
-    private void initSDK() {
-
-        if (Constant.clServices == null) {
-
-            CLServices.initService(cordova.getActivity(), new ServiceConnectionStatusNotifier() {
+            CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
 
                 @Override
                 public void serviceConnected(CLServices services) {
-                    Constant.clServices = services;
+
+                    CLRemoteResultReceiver receiver =
+                            new CLRemoteResultReceiver(new ResultReceiver(new Handler()) {
+
+                                @Override
+                                protected void onReceiveResult(int resultCode, Bundle resultData) {
+
+                                    try {
+
+                                        if (resultData == null) {
+                                            callbackContext.error("Empty response");
+                                            return;
+                                        }
+
+                                        String result;
+
+                                        if (resultData.containsKey("PID_DATA")) {
+                                            result = resultData.getString("PID_DATA");
+                                        }
+                                        else if (resultData.containsKey("PID_DATA_XML")) {
+                                            result = resultData.getString("PID_DATA_XML");
+                                        }
+                                        else if (resultData.containsKey("encryptedPid")) {
+                                            result = resultData.getString("encryptedPid");
+                                        }
+                                        else {
+                                            result = resultData.toString();
+                                        }
+
+                                        callbackContext.success(result);
+
+                                    } catch (Exception e) {
+                                        callbackContext.error(e.getMessage());
+                                    }
+                                }
+
+                            });
+
+                    services.getCredential(
+                            keyCode,
+                            "",
+                            cred,
+                            "",   // ❌ NO configuration (old working)
+                            saltJson,
+                            "",
+                            "",
+                            langPref,
+                            receiver
+                    );
                 }
 
                 @Override
-                public void serviceDisconnected() {}
-            });
-        }
-    }
-
-    // 🔹 Aadhaar Capture
-    private void startAadhaar(String cred, String salt) {
-
-        if (Constant.clServices == null) {
-            callbackContext.error("SDK NOT INITIALIZED");
-            return;
-        }
-
-        try {
-            Constant.clServices.getCredential(
-                    "EKYC",
-                    "",
-                    cred,
-                    "",
-                    salt,
-                    "",
-                    "",
-                    "en_US",
-                    getReceiver("AADHAAR")
-            );
-        } catch (Exception e) {
-            callbackContext.error("AADHAAR ERROR: " + e.getMessage());
-        }
-    }
-
-    // 🔹 FaceAuth Capture
-    private void faceAuth(String cred, String salt) {
-
-        if (Constant.clServices == null) {
-            callbackContext.error("SDK NOT INITIALIZED");
-            return;
-        }
-
-        try {
-            Constant.clServices.getCredential(
-                    "EKYC",
-                    "",
-                    cred,
-                    "",
-                    salt,
-                    "",
-                    "",
-                    "en_US",
-                    getReceiver("FACE")
-            );
-        } catch (Exception e) {
-            callbackContext.error("FACE ERROR: " + e.getMessage());
-        }
-    }
-
-    // 🔹 Handle SDK response
-    private CLRemoteResultReceiver getReceiver(final String type) {
-
-        return new CLRemoteResultReceiver(new ResultReceiver(new Handler()) {
-
-            @Override
-            protected void onReceiveResult(int resultCode, Bundle resultData) {
-
-                try {
-                    String result = resultData != null ? resultData.toString() : "";
-
-                    // Aadhaar success
-                    if ("AADHAAR".equals(type) && resultCode == 2) {
-                        callbackContext.success("AADHAAR_SUCCESS:" + result);
-                    }
-
-                    // Face success
-                    else if ("FACE".equals(type) && resultCode == 1) {
-                        callbackContext.success("FACE_SUCCESS:" + result);
-                    }
-
-                    // Error
-                    else {
-                        callbackContext.error("FAILED CODE: " + resultCode);
-                    }
-
-                } catch (Exception e) {
-                    callbackContext.error("RECEIVER ERROR: " + e.getMessage());
+                public void serviceDisconnected() {
+                    callbackContext.error("Service disconnected");
                 }
-            }
-        });
+            });
+
+        } catch (Exception e) {
+            callbackContext.error(e.getMessage());
+        }
+
+        return true;
     }
 }
