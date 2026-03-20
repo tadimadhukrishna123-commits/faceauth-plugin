@@ -4,12 +4,8 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.ResultReceiver;
-import android.util.Log;
 
-import org.apache.cordova.CallbackContext;
-import org.apache.cordova.CordovaPlugin;
-import org.apache.cordova.PluginResult;
-
+import org.apache.cordova.*;
 import org.json.JSONArray;
 import org.json.JSONException;
 
@@ -19,7 +15,6 @@ import org.npci.upi.security.services.ServiceConnectionStatusNotifier;
 
 public class FaceAuthPlugin extends CordovaPlugin {
 
-    private static final String TAG = "FaceAuthPlugin";
     private CallbackContext callbackContext;
 
     @Override
@@ -40,10 +35,6 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
         try {
 
-            String keyCode = "EKYC";
-            String langPref = "en_US";
-
-            // ✅ FACE AUTH ONLY (OLD WORKING)
             String cred = "{\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}]}";
 
             CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
@@ -69,9 +60,6 @@ public class FaceAuthPlugin extends CordovaPlugin {
                                         if (resultData.containsKey("PID_DATA")) {
                                             result = resultData.getString("PID_DATA");
                                         }
-                                        else if (resultData.containsKey("PID_DATA_XML")) {
-                                            result = resultData.getString("PID_DATA_XML");
-                                        }
                                         else if (resultData.containsKey("encryptedPid")) {
                                             result = resultData.getString("encryptedPid");
                                         }
@@ -89,14 +77,14 @@ public class FaceAuthPlugin extends CordovaPlugin {
                             });
 
                     services.getCredential(
-                            keyCode,
+                            "EKYC",
                             "",
                             cred,
-                            "",   // ❌ NO configuration (old working)
+                            "",   // NO config (important)
                             saltJson,
                             "",
                             "",
-                            langPref,
+                            "en_US",
                             receiver
                     );
                 }
