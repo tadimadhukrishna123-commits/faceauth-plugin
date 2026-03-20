@@ -1,4 +1,6 @@
 repositories {
+    google()
+    mavenCentral()
     flatDir {
         dirs 'libs'
     }
@@ -6,4 +8,9 @@ repositories {
 
 dependencies {
     implementation(name: 'ekyc-setu-sdk', ext: 'aar')
+
+    // 🔥 REQUIRED DEPENDENCIES
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'com.squareup.okhttp3:okhttp:4.9.3'
 }
