@@ -5,11 +5,15 @@ import android.os.Handler;
 import android.os.ResultReceiver;
 import android.provider.Settings;
 
-import org.apache.cordova.*;
+import org.apache.cordova.CallbackContext;
+import org.apache.cordova.CordovaPlugin;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import org.npci.upi.security.services.*;
+import org.npci.upi.security.services.CLRemoteResultReceiver;
+import org.npci.upi.security.services.CLServices;
+import org.npci.upi.security.services.Constant;
+import org.npci.upi.security.services.ServiceConnectionStatusNotifier;
 
 public class FaceAuthPlugin extends CordovaPlugin {
 
@@ -24,7 +28,10 @@ public class FaceAuthPlugin extends CordovaPlugin {
             String cred = args.getString(0);
             String salt = args.getString(1);
 
+            // Add deviceId
             salt = enrichSalt(salt);
+
+            // Initialize SDK
             initSDK();
 
             if ("startAadhaar".equals(action)) {
@@ -38,12 +45,13 @@ public class FaceAuthPlugin extends CordovaPlugin {
             }
 
         } catch (Exception e) {
-            callbackContext.error("ERROR: " + e.getMessage());
+            callbackContext.error("EXECUTE ERROR: " + e.getMessage());
         }
 
         return false;
     }
 
+    // 🔹 Add deviceId into salt
     private String enrichSalt(String salt) throws Exception {
 
         JSONObject json = new JSONObject(salt);
@@ -58,6 +66,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
         return json.toString();
     }
 
+    // 🔹 Initialize SDK
     private void initSDK() {
 
         if (Constant.clServices == null) {
@@ -75,39 +84,84 @@ public class FaceAuthPlugin extends CordovaPlugin {
         }
     }
 
+    // 🔹 Aadhaar Capture
     private void startAadhaar(String cred, String salt) {
 
-        Constant.clServices.getCredential(
-                "EKYC", "", cred, "", salt, "", "", "en_US",
-                getReceiver("AADHAAR")
-        );
+        if (Constant.clServices == null) {
+            callbackContext.error("SDK NOT INITIALIZED");
+            return;
+        }
+
+        try {
+            Constant.clServices.getCredential(
+                    "EKYC",
+                    "",
+                    cred,
+                    "",
+                    salt,
+                    "",
+                    "",
+                    "en_US",
+                    getReceiver("AADHAAR")
+            );
+        } catch (Exception e) {
+            callbackContext.error("AADHAAR ERROR: " + e.getMessage());
+        }
     }
 
+    // 🔹 FaceAuth Capture
     private void faceAuth(String cred, String salt) {
 
-        Constant.clServices.getCredential(
-                "EKYC", "", cred, "", salt, "", "", "en_US",
-                getReceiver("FACE")
-        );
+        if (Constant.clServices == null) {
+            callbackContext.error("SDK NOT INITIALIZED");
+            return;
+        }
+
+        try {
+            Constant.clServices.getCredential(
+                    "EKYC",
+                    "",
+                    cred,
+                    "",
+                    salt,
+                    "",
+                    "",
+                    "en_US",
+                    getReceiver("FACE")
+            );
+        } catch (Exception e) {
+            callbackContext.error("FACE ERROR: " + e.getMessage());
+        }
     }
 
-    private CLRemoteResultReceiver getReceiver(String type) {
+    // 🔹 Handle SDK response
+    private CLRemoteResultReceiver getReceiver(final String type) {
 
         return new CLRemoteResultReceiver(new ResultReceiver(new Handler()) {
 
             @Override
             protected void onReceiveResult(int resultCode, Bundle resultData) {
 
-                String result = resultData != null ? resultData.toString() : "";
+                try {
+                    String result = resultData != null ? resultData.toString() : "";
 
-                if ("AADHAAR".equals(type) && resultCode == 2) {
-                    callbackContext.success("AADHAAR_SUCCESS:" + result);
-                }
-                else if ("FACE".equals(type) && resultCode == 1) {
-                    callbackContext.success("FACE_SUCCESS:" + result);
-                }
-                else {
-                    callbackContext.error("FAILED:" + resultCode);
+                    // Aadhaar success
+                    if ("AADHAAR".equals(type) && resultCode == 2) {
+                        callbackContext.success("AADHAAR_SUCCESS:" + result);
+                    }
+
+                    // Face success
+                    else if ("FACE".equals(type) && resultCode == 1) {
+                        callbackContext.success("FACE_SUCCESS:" + result);
+                    }
+
+                    // Error
+                    else {
+                        callbackContext.error("FAILED CODE: " + resultCode);
+                    }
+
+                } catch (Exception e) {
+                    callbackContext.error("RECEIVER ERROR: " + e.getMessage());
                 }
             }
         });
