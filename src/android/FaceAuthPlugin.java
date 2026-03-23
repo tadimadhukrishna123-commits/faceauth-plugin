@@ -17,6 +17,10 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
     private CallbackContext callbackContext;
 
+    // 🔥 SINGLETON SERVICE
+    private static CLServices clServices = null;
+    private static boolean isServiceInitialized = false;
+
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
 
@@ -35,63 +39,29 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
         try {
 
-            String cred = "{\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}]}";
+            // 🔥 If already initialized → reuse
+            if (isServiceInitialized && clServices != null) {
+                callGetCredential(clServices, saltJson);
+                return true;
+            }
 
+            // 🔥 Initialize ONLY ONCE
             CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
 
                 @Override
                 public void serviceConnected(CLServices services) {
 
-                    CLRemoteResultReceiver receiver =
-                            new CLRemoteResultReceiver(new ResultReceiver(new Handler()) {
+                    clServices = services;
+                    isServiceInitialized = true;
 
-                                @Override
-                                protected void onReceiveResult(int resultCode, Bundle resultData) {
-
-                                    try {
-
-                                        if (resultData == null) {
-                                            callbackContext.error("Empty response");
-                                            return;
-                                        }
-
-                                        String result;
-
-                                        if (resultData.containsKey("PID_DATA")) {
-                                            result = resultData.getString("PID_DATA");
-                                        }
-                                        else if (resultData.containsKey("encryptedPid")) {
-                                            result = resultData.getString("encryptedPid");
-                                        }
-                                        else {
-                                            result = resultData.toString();
-                                        }
-
-                                        callbackContext.success(result);
-
-                                    } catch (Exception e) {
-                                        callbackContext.error(e.getMessage());
-                                    }
-                                }
-
-                            });
-
-                    services.getCredential(
-                            "EKYC",
-                            "",
-                            cred,
-                            "",   // NO config (important)
-                            saltJson,
-                            "",
-                            "",
-                            "en_US",
-                            receiver
-                    );
+                    callGetCredential(services, saltJson);
                 }
 
                 @Override
                 public void serviceDisconnected() {
                     callbackContext.error("Service disconnected");
+                    clServices = null;
+                    isServiceInitialized = false;
                 }
             });
 
@@ -100,5 +70,63 @@ public class FaceAuthPlugin extends CordovaPlugin {
         }
 
         return true;
+    }
+
+    // 🔥 COMMON METHOD FOR BOTH AADHAAR & FACE
+    private void callGetCredential(CLServices services, String saltJson) {
+
+        try {
+
+            String cred = "{\"CredAllowed\":[{\"type\":\"BIOMETRIC\",\"subtype\":\"FACE_AUTH\"}]}";
+
+            CLRemoteResultReceiver receiver =
+                    new CLRemoteResultReceiver(new ResultReceiver(new Handler()) {
+
+                        @Override
+                        protected void onReceiveResult(int resultCode, Bundle resultData) {
+
+                            try {
+
+                                if (resultData == null) {
+                                    callbackContext.error("Empty response");
+                                    return;
+                                }
+
+                                String result;
+
+                                if (resultData.containsKey("PID_DATA")) {
+                                    result = resultData.getString("PID_DATA");
+                                }
+                                else if (resultData.containsKey("encryptedPid")) {
+                                    result = resultData.getString("encryptedPid");
+                                }
+                                else {
+                                    result = resultData.toString();
+                                }
+
+                                callbackContext.success(result);
+
+                            } catch (Exception e) {
+                                callbackContext.error(e.getMessage());
+                            }
+                        }
+
+                    });
+
+            services.getCredential(
+                    "EKYC",
+                    "",
+                    cred,
+                    "",   // config
+                    saltJson,
+                    "",
+                    "",
+                    "en_US",
+                    receiver
+            );
+
+        } catch (Exception e) {
+            callbackContext.error(e.getMessage());
+        }
     }
 }
