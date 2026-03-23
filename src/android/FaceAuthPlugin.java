@@ -17,7 +17,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
     private CallbackContext callbackContext;
 
-    // 🔥 SINGLETON SERVICE INSTANCE
+    // ✅ SINGLETON SERVICE INSTANCE
     private static CLServices clServices = null;
     private static boolean isServiceInitialized = false;
 
@@ -39,13 +39,13 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
         try {
 
-            // 🔥 If already initialized → reuse service
+            // ✅ If already initialized → reuse
             if (isServiceInitialized && clServices != null) {
                 callGetCredential(clServices, saltJson);
                 return true;
             }
 
-            // 🔥 Initialize service ONLY ONCE
+            // ✅ Initialize ONLY ONCE
             CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
 
                 @Override
@@ -60,6 +60,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
                 @Override
                 public void serviceDisconnected() {
                     callbackContext.error("Service disconnected");
+
                     clServices = null;
                     isServiceInitialized = false;
                 }
@@ -72,7 +73,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
         return true;
     }
 
-    // 🔥 COMMON METHOD FOR BOTH AADHAAR & FACE
+    // ✅ COMMON METHOD FOR AADHAAR + FACE
     private void callGetCredential(CLServices services, String saltJson) {
 
         try {
@@ -89,7 +90,6 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
                                 if (resultData == null) {
                                     callbackContext.error("Empty response");
-                                    releaseService();
                                     return;
                                 }
 
@@ -107,12 +107,10 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
                                 callbackContext.success(result);
 
-                                // 🔥 VERY IMPORTANT: RELEASE AFTER EACH CALL
-                                releaseService();
+                                // ❌ DO NOT RELEASE SERVICE HERE
 
                             } catch (Exception e) {
                                 callbackContext.error(e.getMessage());
-                                releaseService();
                             }
                         }
                     });
@@ -121,7 +119,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
                     "EKYC",
                     "",
                     cred,
-                    "",   // config
+                    "",
                     saltJson,
                     "",
                     "",
@@ -131,19 +129,6 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
         } catch (Exception e) {
             callbackContext.error(e.getMessage());
-            releaseService();
-        }
-    }
-
-    // 🔥 SERVICE RELEASE METHOD
-    private void releaseService() {
-        try {
-            if (clServices != null) {
-                clServices = null;
-            }
-            isServiceInitialized = false;
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 }
