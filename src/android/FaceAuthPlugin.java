@@ -17,7 +17,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
     private CallbackContext callbackContext;
 
-    // 🔥 SINGLETON SERVICE
+    // 🔥 SINGLETON SERVICE INSTANCE
     private static CLServices clServices = null;
     private static boolean isServiceInitialized = false;
 
@@ -39,13 +39,13 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
         try {
 
-            // 🔥 If already initialized → reuse
+            // 🔥 If already initialized → reuse service
             if (isServiceInitialized && clServices != null) {
                 callGetCredential(clServices, saltJson);
                 return true;
             }
 
-            // 🔥 Initialize ONLY ONCE
+            // 🔥 Initialize service ONLY ONCE
             CLServices.initService(activity, new ServiceConnectionStatusNotifier() {
 
                 @Override
@@ -89,6 +89,7 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
                                 if (resultData == null) {
                                     callbackContext.error("Empty response");
+                                    releaseService();
                                     return;
                                 }
 
@@ -106,11 +107,14 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
                                 callbackContext.success(result);
 
+                                // 🔥 VERY IMPORTANT: RELEASE AFTER EACH CALL
+                                releaseService();
+
                             } catch (Exception e) {
                                 callbackContext.error(e.getMessage());
+                                releaseService();
                             }
                         }
-
                     });
 
             services.getCredential(
@@ -127,6 +131,19 @@ public class FaceAuthPlugin extends CordovaPlugin {
 
         } catch (Exception e) {
             callbackContext.error(e.getMessage());
+            releaseService();
+        }
+    }
+
+    // 🔥 SERVICE RELEASE METHOD
+    private void releaseService() {
+        try {
+            if (clServices != null) {
+                clServices = null;
+            }
+            isServiceInitialized = false;
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }
